@@ -6,6 +6,9 @@ import { CreateUserDto } from "./dto/create-user.dto";
 import { Profile } from "src/profile/profile.entity";
 import { ConfigService } from "@nestjs/config";
 import { UserAlreadyExistsException } from "src/exceptions/user-already-exists.exceoption";
+import { Paginated } from "src/common/pagination/paginater.interface";
+import { PaginationProvider } from "src/common/pagination/pagination.provider";
+import { PaginationQueryDto } from "src/common/pagination/dto/pagination-query.dto";
 
 @Injectable()   // Dependency Injection
 export class UsersService {
@@ -16,23 +19,31 @@ export class UsersService {
         @InjectRepository(Profile)
         private profileRepository: Repository<Profile>,
 
-        private readonly configService: ConfigService
-        
+        private readonly configService: ConfigService,
+    
+        private readonly paginationProvider: PaginationProvider
+
     ) {}
 
-    public async getAllUsers() {
+    public async getAllUsers(paginationQueryDto: PaginationQueryDto): Promise<Paginated<User>> {
         try {
-            const enviroment = this.configService.get<string>('ENV_MODE');
-            console.log(enviroment);
+            // const enviroment = this.configService.get<string>('ENV_MODE');
+            // console.log(enviroment);
             
-            const nodeENV = process.env.NODE_ENV;
-            console.log(nodeENV);
+            // const nodeENV = process.env.NODE_ENV;
+            // console.log(nodeENV);
+            return this.paginationProvider.paginateQuery(
+                paginationQueryDto,
+                this.userRepository,
+                null,
+                ['profile']
+            )
 
-            return await this.userRepository.find({
-                relations: {    // Eager Loading
-                    profile: true
-                }
-            });
+            // return await this.userRepository.find({
+            //     relations: {    // Eager Loading
+            //         profile: true
+            //     }
+            // });
         } catch (error) {
             throw new RequestTimeoutException(
                 'An error has occured. Please try again later', 
