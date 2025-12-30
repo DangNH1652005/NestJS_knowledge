@@ -1,10 +1,13 @@
-import { Body, Controller, DefaultValuePipe, Delete, Get, Param, ParseBoolPipe, ParseIntPipe, Patch, Post, Query, ValidationPipe } from "@nestjs/common";
+import { Body, Controller, DefaultValuePipe, Delete, Get, Param, ParseBoolPipe, ParseIntPipe, Patch, Post, Query, UseGuards, ValidationPipe } from "@nestjs/common";
 import { UsersService } from "./users.service";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { PaginationQueryDto } from "src/common/pagination/dto/pagination-query.dto";
+import { AuthorizeGuard } from "src/auth/guards/authorize.guard";
 
 //http://localhost:3000/users
 @Controller('users')
+@UseGuards(AuthorizeGuard)
+
 export class UsersController {
     constructor(private usersService: UsersService){}
 
