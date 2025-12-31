@@ -6,6 +6,9 @@ import { CreateUserDto } from 'src/users/dto/create-user.dto';
 import { LoginDto } from './dto/login.dto';
 import { HashingProvider } from './provider/hashing.provider';
 import { JwtService } from '@nestjs/jwt';
+import { User } from 'src/users/user.entity';
+import { ActiveUserType } from 'src/interfaces/active-user-type.interface';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 
 @Injectable()
 export class AuthService {
@@ -35,15 +38,7 @@ export class AuthService {
             throw new UnauthorizedException('Incorrect password');
         }
 
-        const token = await this.jwtService.signAsync({
-            sub: user.id,  
-            email: user.email
-        }, {
-            secret: this.authConfiguration.secret,
-            expiresIn: this.authConfiguration.expiresIn,
-            audience: this.authConfiguration.audience,
-            issuer: this.authConfiguration.issuer
-        });
+        const token = await this.generateToken(user);
 
         return {
             token: token,
@@ -55,5 +50,42 @@ export class AuthService {
 
     public async signup(createUserDto: CreateUserDto) {
         return await this.userService.createUser(createUserDto);
+    }
+
+    public async refreshToken(refreshTokenDto: RefreshTokenDto) {
+        try {
+            const { sub } = await this.jwtService.verifyAsync(refreshTokenDto.refreshToken, {
+                secret: this.authConfiguration.secret,
+                audience: this.authConfiguration.audience,
+                issuer: this.authConfiguration.issuer
+            });
+
+            const user = await this.userService.findUserById(sub);
+
+            return await this.generateToken(user);
+        } catch (error) {
+            throw new UnauthorizedException(error);
+        }
+    }
+
+    private async signToken<T>(userId: number, expiresIn: number, payload?: T) {
+        return await this.jwtService.signAsync({
+            sub: userId,
+            ...payload  
+        }, {
+            secret: this.authConfiguration.secret,
+            expiresIn: this.authConfiguration.refreshTokenExpiresIn,
+            audience: this.authConfiguration.audience,
+            issuer: this.authConfiguration.issuer
+        });
+    }
+
+    private async generateToken(user: User) {
+        const accessToken = await this.signToken<Partial<ActiveUserType>>(user.id, this.authConfiguration.expiresIn, { email: user.email });
+        const refreshToken = await this.signToken(user.id, this.authConfiguration.refreshTokenExpiresIn);
+        return {
+            token: accessToken,
+            refreshToken
+        }
     }
 }
